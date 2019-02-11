@@ -1,0 +1,21 @@
+---    # sample config for building vms using cloudinit-kvm
+projectname: 'my-elklab'
+vms:
+  - name: elk101.lab                 # fqdn for the virtual machine
+    ipaddr: 192.168.122.100          # ipaddr for the virtual machine
+    cpu: 2                           # number of cpu threads to allocate
+    mem: 512                         # amount of memory to allocate always in MB
+    backingdisk: /tmp/rhel7.qcow2    # path to the backing disk
+    disksize: 30G                    # (G,M) units are required
+    userdata: /tmp/user-data         # path to nocloud's user-data file
+    metadata: /tmp/meta-data         # path to nocloud's user-data file
+    savedir: /tmp/elk101.lab         # destination directory to save disk/iso
+  - name: elk102.lab
+    ipaddr: 192.168.122.50
+    cpu: 1
+    mem: 1024
+    backingdisk: /tmp/rhel7.qcow2
+    disksize: 30G
+    userdata: /tmp/user-data
+    metadata: /tmp/meta-data
+    savedir: /tmp/elklab102/
