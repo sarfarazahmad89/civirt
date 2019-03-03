@@ -1,21 +1,30 @@
 ---    # sample config for building vms using cloudinit-kvm
-projectname: 'my-elklab'
+projectname: 'my-dockerlab'
+common:
+  bdisk: /tmp/rhel7.qcow2
+  size: 10G
+  outdir: /tmp/my-elklab/
+  cpu: 1
+  mem: 512
+  userdata:
+    # cloud-config
+    preserve_hostname: false
+    password: cloudimg
+    ssh_pwauth: true
+    users:
+      - name: local
+        groups: wheel
+        sudo: ['ALL=(ALL) NOPASSWD:ALL']
+        ssh_authorized_keys:
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDaeYEAr6oO6hE5DdCUY69jO0Up1t2u8FLpdQXXhtFqfZBtQXWn73vvPxS11emsNivzlGDMPFfQIAsxgicQW+hhJBMgITjhYqm8CpYrsp2H5P0Jd+EUScmYxirJYmei7pHv9sjlWa+e8E9hjXSmCTWKxm7wnWXyWgAbgWustUDUQ06p4fOKrjaClzEShitEt88Qe+Q245LQzBgaEaQ1EFjq46WtTlzZLrziNjANO4wfiSuGXwLpjMFBOnGvnYutvawIyXV2bpJIZIC4OHKozA0wItQYvlURmLsREpJxz1x1wO6yaVk0U6Vt+axk+pUgPqMrw/hKymKsjuus3rsfYpPB ahmad@mymachine
+    runcmd:
+      - 'sudo apt update; sudo apt-get install apt-transport-https ca-certificates -y'
+      - 'sudo apt install curl gnupg-agent software-properties-common -y '
+      - 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -'
+      - 'apt-key fingerprint 0EBFCD88 -y'
+      - 'add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
 vms:
-  - name: elk101.lab                 # fqdn for the virtual machine
+  - fqdn: docker101.lab                 # fqdn for the virtual machine
     ipaddr: 192.168.122.100          # ipaddr for the virtual machine
-    cpu: 2                           # number of cpu threads to allocate
-    mem: 512                         # amount of memory to allocate always in MB
-    backingdisk: /tmp/rhel7.qcow2    # path to the backing disk
-    disksize: 30G                    # (G,M) units are required
-    userdata: /tmp/user-data         # path to nocloud's user-data file
-    metadata: /tmp/meta-data         # path to nocloud's user-data file
-    savedir: /tmp/elk101.lab         # destination directory to save disk/iso
-  - name: elk102.lab
+  - fqdn: docker102.lab
     ipaddr: 192.168.122.50
-    cpu: 1
-    mem: 1024
-    backingdisk: /tmp/rhel7.qcow2
-    disksize: 30G
-    userdata: /tmp/user-data
-    metadata: /tmp/meta-data
-    savedir: /tmp/elklab102/
