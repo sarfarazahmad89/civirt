@@ -36,8 +36,8 @@ Options:
 Commands:
   build             provision a bunch of virtual machines using config file.
   build-instance    quickly spin up a single instance using "common" settings.
-  cleanup           remove previously provisioned virtual machines.
-  cleanup-instance  delete a previously spun up instance with all its files.
+  delete           remove previously provisioned virtual machines.
+  delete-instance  delete a previously spun up instance with all its files.
 ```
 
 Explain how to run the automated tests for this system
