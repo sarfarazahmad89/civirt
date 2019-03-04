@@ -22,47 +22,33 @@ def build(configfile):
 
 @civirt.command()
 @click.option('--configfile', '-c', help="path to the yaml file.", required=True)
-def cleanup(configfile):
+def delete(configfile):
     '''
     remove previously provisioned virtual machines.
     '''
-    functions.cleanup_yaml(configfile)
+    functions.delete_yaml(configfile)
+
 
 @civirt.command()
 @click.option('--configfile', '-c', help="path to the yaml file.", required=True)
 @click.option('--fqdn', '-f', help="fqdn for the vm", required=True)
-@click.option('--ip', '-i', help="ip address for the vm", required=True)
-def build_instance(configfile, fqdn, ip):
+@click.option('--ipaddr', '-i', help="ip address for the vm", required=True)
+def build_instance(configfile, fqdn, ipaddr):
     '''
     quickly spin up a single instance using "common" settings.
     '''
-    with open(configfile, 'r') as conf_fd:
-        config = yaml.load(conf_fd)
-    vm_config = config['common']
-    vm_config['fqdn'] = fqdn
-    vm_config['ipaddr'] = ip
-    functions.update_metadata(vm_config)
-    vm = functions.VirtualMachine(**vm_config)
-    vm.build()
+    functions.build_instance(configfile, fqdn, ipaddr)
 
 @civirt.command()
 @click.option('--configfile', '-c', help="path to the yaml file.", required=True)
 @click.option('--fqdn', '-f', help="fqdn for the vm", required=True)
-@click.option('--ip', '-i', help="ip address for the vm", required=True)
-def cleanup_instance(configfile, fqdn, ip):
+def delete_instance(configfile, fqdn):
     '''
-    delete a previously spun up instance with all its files.
+    delete a single running instance
     '''
-    with open(configfile, 'r') as conf_fd:
-        config = yaml.load(conf_fd)
-    vm_config = config['common']
-    vm_config['fqdn'] = fqdn
-    vm_config['ipaddr'] = ip
-    functions.update_metadata(vm_config)
-    vm = functions.VirtualMachine(**vm_config)
-    vm.delete()
+    functions.delete_instance(configfile, fqdn)
 
 civirt.add_command(build)
-civirt.add_command(cleanup)
+civirt.add_command(delete)
 civirt.add_command(build_instance)
-civirt.add_command(cleanup_instance)
+civirt.add_command(delete_instance)
