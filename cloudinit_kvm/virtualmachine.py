@@ -182,7 +182,6 @@ class VirtualMachine(object):
         #       doesn't exist
         match = False
         with open(HOSTSFILE, 'r+') as hstreader:
-            hstreader = open(HOSTSFILE, 'r+')
             all_entries = hstreader.readlines()
             hstreader.seek(0)
             for line in all_entries:
