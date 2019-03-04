@@ -29,12 +29,9 @@ class VirtualMachine(object):
         self.ipaddr = ipaddr
         self.bdisk = bdisk
         self.outdir = outdir
-        if cpu is not None:
-            self.cpu = cpu
-        if mem is not None:
-            self.mem = mem
-        if size is not None:
-            self.size = size
+        self.cpu = cpu
+        self.mem = mem
+        self.size = size
         self.userdata = userdata
         self.metadata = metadata
         self.outdir = outdir
@@ -55,10 +52,15 @@ class VirtualMachine(object):
         if not os.path.isdir(os.path.abspath(self.outdir)):
             os.makedirs(self.outdir)
 
+        # Create nocloud iso
         self.create_iso()
+        # Create backing disk
         self.create_disk()
+        # Add hostsentry
         self.add_hostsentry()
+        # Run virt-install
         self.create_vm()
+        LOGGER.info('%s : successfully built.', self.fqdn)
 
 
     def delete(self):
@@ -71,10 +73,12 @@ class VirtualMachine(object):
         self.delete_file(self.outdisk)
         # Remove nocloud ISO
         self.delete_file(self.ci_iso)
+        # Remove entry from hostsfile
+        self.delete_hostsentry()
         # Remove the output directory
         if len(os.listdir(self.outdir)) == 0:
             os.rmdir(self.outdir)
-
+        LOGGER.info('%s : successfully removed.', self.fqdn)
 
     def add_hostsentry(self):
         '''
