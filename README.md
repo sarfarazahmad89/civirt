@@ -4,7 +4,8 @@ cloudinit-kvm is a python2 module that lets you easily provision linux virtual m
 personal laptop or workstation using cloud-init's nocloud isos and 
 cloud disk images(qcow2).
 
-It is rather dumb and was intended as a learning exercise.
+I didn't feel comfortable with vagrant, so I pieced this together in a rush.
+The code is therefore ugly.
 
 It lets you describe a set of vms belonging to a pet project in a yaml
 file. You could club puppet, cloud-init's nocloud files and the config
@@ -40,7 +41,7 @@ Commands:
   delete-instance  delete a previously spun up instance with all its files.
 ```
 
-Explain how to run the automated tests for this system
+
 
 ### Sample config
 ```
@@ -91,6 +92,9 @@ userdata: # Cloudinit's user-data
 metadata: # Cloudinit's meta-data (virtual machine's interface is automatically configured to use the ipaddr value.)
 
 ```
+
+Note that you can write per virtual machine user-data config as well. That way you can build machines with different cloud-init settings.
+
 ## Links
 https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
 
