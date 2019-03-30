@@ -37,6 +37,8 @@ class VirtualMachine(object):
         self.outdir = outdir
         self.outdisk = os.path.join(os.path.abspath(outdir), fqdn+".qcow2")
         self.ci_iso = os.path.join(os.path.abspath(outdir), fqdn+"_ci.iso")
+        self.netconfig = None
+        self.domainxml = None
 
 
     def __str__(self):
@@ -52,15 +54,18 @@ class VirtualMachine(object):
         if not os.path.isdir(os.path.abspath(self.outdir)):
             os.makedirs(self.outdir)
 
-        # Create nocloud iso
-        self.create_iso()
         # Create backing disk
         self.create_disk()
         # Add hostsentry
         self.add_hostsentry()
-        # Run virt-install
+        # Generate xml with virt-install
         self.create_vm()
-        LOGGER.info('%s : successfully built.', self.fqdn)
+        # Create nocloud iso
+        self.create_iso()
+        # Attach the iso file
+        self.attach_iso()
+        # Start the VM
+        self.start_vm()
 
 
     def delete(self):
@@ -76,9 +81,10 @@ class VirtualMachine(object):
         # Remove entry from hostsfile
         self.delete_hostsentry()
         # Remove the output directory
-        if len(os.listdir(self.outdir)) == 0:
+        if os.listdir(self.outdir) is None:
             os.rmdir(self.outdir)
         LOGGER.info('%s : successfully removed.', self.fqdn)
+
 
     def add_hostsentry(self):
         '''
@@ -106,21 +112,34 @@ class VirtualMachine(object):
         '''
         create libvirt/kvm domain using virt-install
         '''
-        cmd = ['virt-install', '--import', '--os-variant=rhel7', '--noautoconsole',
+        cmd = ['virt-install', '--import', '--os-variant=rhel7.0', '--noautoconsole',
                '--network', 'bridge=virbr0,model=virtio', '--vcpus', str(self.cpu),
-               '--ram', str(self.mem)]
+               '--ram', str(self.mem), '--print-xml']
 
         cmd.extend(['--name', self.fqdn])
         cmd.extend(['--disk', os.path.abspath(self.outdisk)+',format=qcow2,bus=virtio'])
-        cmd.extend(['--disk', os.path.abspath(self.ci_iso)+',device=cdrom'])
-
         try:
-            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-            LOGGER.info('%s : virtual machine successfully created', self.fqdn)
+            # generate the xml configuration
+            self.domainxml = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as err:
-            LOGGER.critical('%s : failed to start virtual machine. output: %s',
+            LOGGER.critical('%s : failure generating libvirt xml. command output: %s',
                             self.fqdn, err.output)
             raise
+
+        # create the virtual machine 
+        cmd_to_define_vm = subprocess.Popen(["virsh", "define", "/dev/stdin"], 
+                                            stdin=subprocess.PIPE,
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.STDOUT)
+        cmd_to_define_vm.stdin.write(self.domainxml)
+        cmd_to_define_vm.communicate()
+        cmd_to_define_vm.wait()
+        if cmd_to_define_vm.returncode != 0:
+            LOGGER.critical('%s : failure creating virtual machine using virsh.',
+                            self.fqdn)
+            raise subprocess.CalledProcessError
+        else:
+            LOGGER.info('%s : virtual machine defined/created in libvirt.', self.fqdn)
 
 
     def create_disk(self):
@@ -143,11 +162,41 @@ class VirtualMachine(object):
                             self.fqdn, err.output)
             raise
 
+    #TODO: this should probably be a global function.
+    def _gen_networkconfig(self):
+        '''
+        Builds NoCloud network config for the given IP
+        '''
+        # Code to pull in mac address
+        pattern = re.compile('<mac address=(.*)/>')
+        try:
+            macaddr = pattern.search(self.domainxml).groups()[0]
+        except AttributeError:
+            LOGGER.critical('%s : no mac address found in vm\'s xml. '
+                            'This will result in broken network config.')
+            # We continue though network config is broken. There could be
+            # other VMs to provision.
+            pass
+
+        self.netconfig = {'version': 2,
+                          'ethernets':
+                          {'interface0': {
+                              'match': {'macaddress': macaddr.strip('\"')},
+                              'set-name': 'eth0',
+                              'addresses': [str(self.ipaddr)+'/24'],
+                              'gateway4': '192.168.122.1',
+                              'nameservers' : {'addresses': ['192.168.122.1']}
+                           }
+                          }
+                         }
 
     def create_iso(self):
         '''
         create a cloud-init iso from {user/meta}data dictionaries.
         '''
+        # Ready network config
+        self._gen_networkconfig()
+
         # Create an ISO
         iso = pycdlib.PyCdlib()
         # Set label to "cidata"
@@ -156,14 +205,20 @@ class VirtualMachine(object):
                 sys_ident='LINUX',
                 vol_ident='cidata'
                )
-        metadata = yaml.dump(self.metadata, default_style="|")
-        userdata = "#cloud-config\n" + yaml.dump(self.userdata, default_style="|")
+        metadata = yaml.dump(self.metadata, default_style="\\")
+        userdata = "#cloud-config\n" + yaml.dump(self.userdata, default_style="\\")
+        netconfig = yaml.dump(self.netconfig, default_style="\\")
+
         # Calculate sizes of the files to write.
         msize = len(metadata)
         usize = len(userdata)
+        nwsize = len(netconfig)
+
         # Add files to iso
         iso.add_fp(BytesIO(userdata), usize, '/USERDATA.;1', joliet_path='/user-data')
         iso.add_fp(BytesIO(metadata), msize, '/METADATA.;1', joliet_path='/meta-data')
+        iso.add_fp(BytesIO(netconfig), nwsize, '/NETWORKCONFIG.;1', joliet_path='/network-config')
+
         try:
             # Write the iso file
             iso.write(self.ci_iso)
@@ -171,6 +226,36 @@ class VirtualMachine(object):
         except IOError:
             LOGGER.critical('%s : failed to create nocloud iso at %s',
                             self.fqdn, self.ci_iso)
+            raise
+
+
+    def attach_iso(self):
+        '''
+        Attach created iso to the virtual machine
+        '''
+        cmd = ['virsh', 'attach-disk', '--persistent', self.fqdn, self.ci_iso,
+               'hdc', '--type', 'cdrom']
+        try:
+            subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+            LOGGER.info('%s : nocloud iso attached to the vm.', self.fqdn)
+        except subprocess.CalledProcessError as err:
+            LOGGER.critical('%s : failure attaching iso. command output: %s',
+                            self.fqdn, err.output)
+            raise
+
+
+    def start_vm(self):
+        '''
+        Start the virtual machine
+        '''
+        cmd = ['virsh', 'start', self.fqdn]
+        try:
+            subprocess.check_call(cmd, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT)
+            LOGGER.info('%s : vm successfully started', self.fqdn)
+        except subprocess.CalledProcessError as err:
+            LOGGER.critical('%s : failure starting virtual machine. command output: %s',
+                            self.fqdn, err.output)
             raise
 
 

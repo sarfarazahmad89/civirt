@@ -15,18 +15,12 @@ stdouthandler.setFormatter(logformat)
 LOGGER.addHandler(stdouthandler)
 LOGGER.setLevel(logging.INFO)
 
-def update_metadata(vmsettings=None):
+
+def create_metadata(vmsettings=None):
     '''
-    Conveniently merges any metadata with ipaddr for configure_eth0
+    Creates object that is written as yaml to <cloudinit_iso>/metadata
     '''
     vmsettings['metadata'] = {}
-    ipaddr = vmsettings['ipaddr']
-    # We only provision to the default virbr0 :/
-    vmsettings['metadata']['network-interfaces'] = ('iface eth0 inet static\n'
-                                                    'address {}\nnetwork '
-                                                    '192.168.122.0\nnetmask '
-                                                    '255.255.255.0\ngateway '
-                                                    '192.168.122.1'.format(ipaddr))
     vmsettings['metadata']['instance_id'] = (vmsettings['fqdn'] +
                                              ''.join(random.choice(string.ascii_uppercase
                                                      + string.digits) for _ in range(5)))
@@ -52,7 +46,7 @@ def populate_config(configfile):
             vm_configs[vm['fqdn']] = copy.deepcopy(config.get('common'))
             vm_configs[vm['fqdn']].update(vm)
             # Add metadata to configure network
-            update_metadata(vm_configs[vm['fqdn']])
+            create_metadata(vm_configs[vm['fqdn']])
             LOGGER.info('%s - configuration built ', vm['fqdn'])
         except Exception as err:
             LOGGER.exception('%s - failed to generate valid config %s', vm['fqdn'], err)
@@ -100,7 +94,8 @@ def _create_vm_object(configfile, fqdn, ip):
     vm_config = config['common']
     vm_config['fqdn'] = fqdn
     vm_config['ipaddr'] = ip
-    functions.update_metadata(vm_config)
+    functions.create_metadata(vm_config)
+    functions.create_netconfig(vm_config)
     vm = functions.VirtualMachine(**vm_config)
     return vm
 
