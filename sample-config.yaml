@@ -1,9 +1,9 @@
 ---    # sample config for building vms using cloudinit-kvm
-projectname: 'my-dockerlab'
+project: 'my-dockerlab'
 common:
-  bdisk: /tmp/rhel7.qcow2
+  backingdisk: /home/ahmad/Desktop/Docker/debian-10.4.1-20200515-openstack-amd64.qcow2
   size: 10G
-  outdir: /tmp/my-elklab/
+  directory: /home/ahmad/Desktop/Docker
   cpu: 1
   mem: 512
   userdata:
@@ -16,13 +16,14 @@ common:
         groups: wheel
         sudo: ['ALL=(ALL) NOPASSWD:ALL']
         ssh_authorized_keys:
-          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDaeYEAr6oO6hE5DdCUY69jO0Up1t2u8FLpdQXXhtFqfZBtQXWn73vvPxS11emsNivzlGDMPFfQIAsxgicQW+hhJBMgITjhYqm8CpYrsp2H5P0Jd+EUScmYxirJYmei7pHv9sjlWa+e8E9hjXSmCTWKxm7wnWXyWgAbgWustUDUQ06p4fOKrjaClzEShitEt88Qe+Q245LQzBgaEaQ1EFjq46WtTlzZLrziNjANO4wfiSuGXwLpjMFBOnGvnYutvawIyXV2bpJIZIC4OHKozA0wItQYvlURmLsREpJxz1x1wO6yaVk0U6Vt+axk+pUgPqMrw/hKymKsjuus3rsfYpPB ahmad@mymachine
+          - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDE4g1A0NaYp16wpa624yk1gvric4oeTkgdG7rojH2zzYFURAt612T4obzFLir55QCmWvjsbRDtEK9N1ZW8oFY+REPgSczJFqfnoLeDv3iPy/a+TK6yG8WuhfiKlk519G8c021fduqo7njiY5T/wyRcyBefr5ogfALr5F5irsJcQjv62H+9DTJmS5lYf2ge1OggVCYtEO1k8pqy9xAKc9R/yMcKO9arTtfYYeGgkTKBLPa/83DS5pNDYAJ/DEY2Efx8B7npW5KwT6cKKHA/SjGd45VUsSEkU747VkT5zP5ImXYfjI7cMMxJBm7KQboBWeCDLYSmExtEG7TY9rCwnZ9VOEgivIDT6CauA7N2Db2YnQih92xs2D+ryRLjEar580Z40FaUCCqVAZlJSIZqw379bv3KVLClImLHxzKU7v1a4j29SOrmsK7h2gTAsVcl4r6q9XfQJ7bj9YG4z9TSf16pMbXa08czXBQMyy+41JXVD+SQjnFWebr/o3tGaGjAnHE= ahmad@mymachine
     runcmd:
       - 'sudo apt update; sudo apt-get install apt-transport-https ca-certificates -y'
       - 'sudo apt install curl gnupg-agent software-properties-common -y '
-      - 'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -'
+      - 'curl -fsSL https://download.docker.com/linux/debian/gpg | sudo apt-key add -'
       - 'apt-key fingerprint 0EBFCD88 -y'
       - 'add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"'
+      - 'sudo apt-get install docker-ce docker-ce-cli containerd.io'
 vms:
   - fqdn: docker101.lab                 # fqdn for the virtual machine
     ipaddr: 192.168.122.100          # ipaddr for the virtual machine
