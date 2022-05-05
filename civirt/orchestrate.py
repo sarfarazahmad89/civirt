@@ -23,7 +23,7 @@ def _prepareconfig(file):
     compiledconfig = {}
     try:
         with open(file, 'r') as reader:
-            config = yaml.load(reader)
+            config = yaml.load(reader, Loader=yaml.FullLoader)
     except (IOError, yaml.YAMLError) as err:
         LOGGER.critical(f'Exception reading/parsing configuration file. '
                         f'Will exit. {str(err)}')
